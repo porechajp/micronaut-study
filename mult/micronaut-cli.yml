@@ -1,0 +1,6 @@
+applicationType: default
+defaultPackage: com.rudra.expr
+testFramework: junit
+sourceLanguage: java
+buildTool: gradle
+features: [annotation-api, app-name, gradle, http-client-test, java, java-application, junit, logback, micronaut-aot, micronaut-build, micronaut-http-validation, multi-tenancy, netty-server, problem-json, properties, readme, redis-lettuce, security-annotations, security-jwt, serialization-jackson, shade, testcontainers]
