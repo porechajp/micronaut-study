@@ -123,7 +123,7 @@ public abstract class DynamoRepository<T extends Identified> {
     }
 
     @NonNull
-    public static Optional<String> lastEvaluatedId(@NonNull QueryResponse response,
+    public static Optional<Integer> lastEvaluatedId(@NonNull QueryResponse response,
                                                    @NonNull Class<?> cls) {
         if (response.hasLastEvaluatedKey()) {
             Map<String, AttributeValue> item = response.lastEvaluatedKey();
@@ -177,10 +177,10 @@ public abstract class DynamoRepository<T extends Identified> {
     }
 
     @NonNull
-    protected static Optional<String> id(@NonNull Class<?> cls,
+    protected static Optional<Integer> id(@NonNull Class<?> cls,
                                          @NonNull AttributeValue attributeValue) {
         String str = attributeValue.s();
         String substring = cls.getSimpleName().toUpperCase() + HASH;
-        return str.startsWith(substring) ? Optional.of(str.substring(substring.length())) : Optional.empty();
+        return str.startsWith(substring) ? Optional.of(str.substring(substring.length())).map(Integer::parseInt) : Optional.empty();
     }
 }

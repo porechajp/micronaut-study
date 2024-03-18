@@ -2,15 +2,15 @@ package com.tnt.dynamo.repositories;
 
 import com.tnt.dynamo.entities.Employee;
 import io.micronaut.core.annotation.NonNull;
-import jakarta.inject.Inject;
+import io.micronaut.core.util.CollectionUtils;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.annotations.NotNull;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
-import java.awt.print.Book;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.util.*;
 
 
@@ -24,8 +24,10 @@ public class EmployeeRepository extends DynamoRepository<Employee> {
 
     private static final Logger LOG = LoggerFactory.getLogger(EmployeeRepository.class);
     private static final String ATTRIBUTE_ID = "id";
-    private static final String ATTRIBUTE_ISBN = "isbn";
-    private static final String ATTRIBUTE_NAME = "name";
+    private static final String ATTRIBUTE_FN = "firstName";
+    private static final String ATTRIBUTE_LN = "lastName";
+
+    private static final String ATTRIBUTE_JD = "joiningDate";
 
 
     private final IdGenerator idGenerator;
@@ -57,58 +59,64 @@ public class EmployeeRepository extends DynamoRepository<Employee> {
 
 
     @NonNull
-    public Optional<Book> findById(@NonNull  Integer id) {
+    public Optional<Employee> findById(@NonNull  Integer id) {
         return findById(Employee.class, id)
                 .map(this::employeeOf);
     }
 
-    @Override
-    public void delete(@NonNull  String id) {
-        delete(Book.class, id);
+
+    public void delete(@NonNull  Integer id) {
+        delete(Employee.class, id);
     }
 
-    @Override
+
     @NonNull
-    public List<Book> findAll() {
-        List<Book> result = new ArrayList<>();
-        String beforeId = null;
+    public List<Employee> findAll() {
+        List<Employee> result = new ArrayList<>();
+        Integer beforeId = null;
         do {
-            QueryRequest request = findAllQueryRequest(Book.class, beforeId, null);
+            QueryRequest request = findAllQueryRequest(Employee.class, beforeId, null);
             QueryResponse response = dynamoDbClient.query(request);
             if (LOG.isTraceEnabled()) {
                 LOG.trace(response.toString());
             }
             result.addAll(parseInResponse(response));
-            beforeId = lastEvaluatedId(response, Book.class).orElse(null);
+            beforeId = lastEvaluatedId(response, Employee.class).orElse(null);
         } while(beforeId != null);
         return result;
     }
 
-    private List<Book> parseInResponse(QueryResponse response) {
+    private List<Employee> parseInResponse(QueryResponse response) {
         List<Map<String, AttributeValue>> items = response.items();
-        List<Book> result = new ArrayList<>();
+        List<Employee> result = new ArrayList<>();
         if (CollectionUtils.isNotEmpty(items)) {
             for (Map<String, AttributeValue> item : items) {
-                result.add(bookOf(item));
+                result.add(employeeOf(item));
             }
         }
         return result;
     }
 
     @NonNull
-    private Book bookOf(@NonNull Map<String, AttributeValue> item) {
-        return new Book(item.get(ATTRIBUTE_ID).s(),
-                item.get(ATTRIBUTE_ISBN).s(),
-                item.get(ATTRIBUTE_NAME).s());
+    private Employee employeeOf(@NonNull Map<String, AttributeValue> item) {
+        try {
+            return new Employee(Integer.parseInt(item.get(ATTRIBUTE_ID).n()),
+                    item.get(ATTRIBUTE_FN).s(),
+                    item.get(ATTRIBUTE_LN).s(),
+                    DateFormat.getDateInstance().parse(item.get(ATTRIBUTE_JD).s()));
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    @Override
+
     @NonNull
-    protected Map<String, AttributeValue> item(@NonNull Book book) {
-        Map<String, AttributeValue> result = super.item(book);
-        result.put(ATTRIBUTE_ID, AttributeValue.builder().s(book.getId()).build());
-        result.put(ATTRIBUTE_ISBN, AttributeValue.builder().s(book.getIsbn()).build());
-        result.put(ATTRIBUTE_NAME, AttributeValue.builder().s(book.getName()).build());
+    protected Map<String, AttributeValue> item(@NonNull Employee employee) {
+        Map<String, AttributeValue> result = super.item(employee);
+        result.put(ATTRIBUTE_ID, AttributeValue.builder().s(employee.id().toString()).build());
+        result.put(ATTRIBUTE_FN, AttributeValue.builder().s(employee.firstName()).build());
+        result.put(ATTRIBUTE_LN, AttributeValue.builder().s(employee.lastName()).build());
+        result.put(ATTRIBUTE_JD, AttributeValue.builder().s(employee.joining().toString()).build());
         return result;
     }
 
