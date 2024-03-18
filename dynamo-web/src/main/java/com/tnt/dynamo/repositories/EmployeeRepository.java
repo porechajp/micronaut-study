@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
+import software.amazon.awssdk.utils.DateUtils;
 
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -39,11 +40,11 @@ public class EmployeeRepository extends DynamoRepository<Employee> {
 
 
     @NonNull
-    public Integer save(@NonNull  String firstName,
-                       @NonNull  String lastName,
-                       @NonNull Date joiningDate) {
+    public Integer save(@NonNull String firstName,
+                        @NonNull String lastName,
+                        @NonNull Date joiningDate) {
         Integer id = idGenerator.generate();
-        save(new Employee(id, firstName,lastName,joiningDate));
+        save(new Employee(id, firstName, lastName, joiningDate));
         return id;
     }
 
@@ -59,13 +60,13 @@ public class EmployeeRepository extends DynamoRepository<Employee> {
 
 
     @NonNull
-    public Optional<Employee> findById(@NonNull  Integer id) {
+    public Optional<Employee> findById(@NonNull Integer id) {
         return findById(Employee.class, id)
                 .map(this::employeeOf);
     }
 
 
-    public void delete(@NonNull  Integer id) {
+    public void delete(@NonNull Integer id) {
         delete(Employee.class, id);
     }
 
@@ -82,7 +83,7 @@ public class EmployeeRepository extends DynamoRepository<Employee> {
             }
             result.addAll(parseInResponse(response));
             beforeId = lastEvaluatedId(response, Employee.class).orElse(null);
-        } while(beforeId != null);
+        } while (beforeId != null);
         return result;
     }
 
@@ -99,24 +100,25 @@ public class EmployeeRepository extends DynamoRepository<Employee> {
 
     @NonNull
     private Employee employeeOf(@NonNull Map<String, AttributeValue> item) {
-        try {
-            return new Employee(Integer.parseInt(item.get(ATTRIBUTE_ID).n()),
-                    item.get(ATTRIBUTE_FN).s(),
-                    item.get(ATTRIBUTE_LN).s(),
-                    DateFormat.getDateInstance().parse(item.get(ATTRIBUTE_JD).s()));
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
+
+
+        return new Employee(Integer.parseInt(item.get(ATTRIBUTE_ID).n()),
+                item.get(ATTRIBUTE_FN).s(),
+                item.get(ATTRIBUTE_LN).s(),
+                new Date(DateUtils.parseIso8601Date(item.get(ATTRIBUTE_JD).s()).toEpochMilli()));
+
     }
 
 
     @NonNull
     protected Map<String, AttributeValue> item(@NonNull Employee employee) {
         Map<String, AttributeValue> result = super.item(employee);
-        result.put(ATTRIBUTE_ID, AttributeValue.builder().s(employee.id().toString()).build());
+        result.put(ATTRIBUTE_ID, AttributeValue.builder().n(employee.id().toString()).build());
         result.put(ATTRIBUTE_FN, AttributeValue.builder().s(employee.firstName()).build());
         result.put(ATTRIBUTE_LN, AttributeValue.builder().s(employee.lastName()).build());
-        result.put(ATTRIBUTE_JD, AttributeValue.builder().s(employee.joining().toString()).build());
+
+
+        result.put(ATTRIBUTE_JD, AttributeValue.builder().s(DateUtils.formatIso8601Date(employee.joining().toInstant())).build());
         return result;
     }
 
